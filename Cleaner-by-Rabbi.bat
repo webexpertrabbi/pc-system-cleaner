@@ -46,6 +46,7 @@ set "currentStep=0"
 set "successCount=0"
 set "failCount=0"
 set "scanReport=%USERPROFILE%\Desktop\RabbiCleanerScan.txt"
+set "scanAscii=%TEMP%\RabbiCleanerScan_ascii.txt"
 
 :: ===============================================================
 :: Automatic Dry Run / Storage Analysis
@@ -57,7 +58,7 @@ echo ========================================================== >> "%scanReport%
 echo. >> "%scanReport%"
 echo   Storage scan in progress...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$items=@(@{Name='User Temp';Path=$env:TEMP},@{Name='Windows Temp';Path=([Environment]::GetEnvironmentVariable('WINDIR')+'\Temp')},@{Name='Windows Update Cache';Path=([Environment]::GetEnvironmentVariable('WINDIR')+'\SoftwareDistribution\Download')},@{Name='Downloads';Path=([Environment]::GetFolderPath('UserProfile')+'\Downloads')},@{Name='Browser Cache';Path=([Environment]::GetEnvironmentVariable('LOCALAPPDATA')+'\Microsoft\Edge\User Data\Default\Cache')},@{Name='Chrome Cache';Path=([Environment]::GetEnvironmentVariable('LOCALAPPDATA')+'\Google\Chrome\User Data\Default\Cache')}); foreach($item in $items){$bytes=0;$files=0;if(Test-Path -LiteralPath $item.Path){Get-ChildItem -LiteralPath $item.Path -File -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {$bytes+=$_.Length;$files++}}; $mb=[math]::Round($bytes/1MB,2); ('{0}: {1} MB ({2} files) - {3}' -f $item.Name,$mb,$files,$item.Path) | Tee-Object -FilePath '%scanReport%' -Append}; Add-Content -LiteralPath '%scanReport%' -Value ''; Add-Content -LiteralPath '%scanReport%' -Value 'Largest files in Downloads (top 10):'; if(Test-Path -LiteralPath ([Environment]::GetFolderPath('UserProfile')+'\Downloads')){Get-ChildItem -LiteralPath ([Environment]::GetFolderPath('UserProfile')+'\Downloads') -File -Recurse -Force -ErrorAction SilentlyContinue | Sort-Object Length -Descending | Select-Object -First 10 | ForEach-Object {('{0} MB - {1}' -f [math]::Round($_.Length/1MB,2),$_.FullName) | Tee-Object -FilePath '%scanReport%' -Append}}" >nul 2>&1
-powershell -NoProfile -Command "Get-Content -LiteralPath '%scanReport%' | Set-Content -LiteralPath '%scanReport%' -Encoding ASCII"
+powershell -NoProfile -Command "Get-Content -LiteralPath '%scanReport%' | Set-Content -LiteralPath '%scanAscii%' -Encoding ASCII; Move-Item -LiteralPath '%scanAscii%' -Destination '%scanReport%' -Force"
 echo   [SCAN] Storage summary
 powershell -NoProfile -Command "$lines=Get-Content -LiteralPath '%scanReport%'; foreach($line in $lines){if($line -match '^([^:]+): ([0-9.]+) MB \(([0-9]+) files\)'){Write-Host ('   {0}: {1} MB / {2} files' -f $matches[1],$matches[2],$matches[3])}}"
 echo   Details: %scanReport%
