@@ -45,6 +45,23 @@ set "totalSteps=18"
 set "currentStep=0"
 set "successCount=0"
 set "failCount=0"
+set "scanReport=%USERPROFILE%\Desktop\RabbiCleanerScan.txt"
+
+:: ===============================================================
+:: Automatic Dry Run / Storage Analysis
+:: ===============================================================
+:: This report is informational only. No user action is required.
+echo ========================================================== > "%scanReport%"
+echo   STORAGE SCAN - %DATE% %TIME% >> "%scanReport%"
+echo ========================================================== >> "%scanReport%"
+echo. >> "%scanReport%"
+echo   Storage scan in progress...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$items=@(@{Name='User Temp';Path=$env:TEMP},@{Name='Windows Temp';Path=([Environment]::GetEnvironmentVariable('WINDIR')+'\Temp')},@{Name='Windows Update Cache';Path=([Environment]::GetEnvironmentVariable('WINDIR')+'\SoftwareDistribution\Download')},@{Name='Downloads';Path=([Environment]::GetFolderPath('UserProfile')+'\Downloads')},@{Name='Browser Cache';Path=([Environment]::GetEnvironmentVariable('LOCALAPPDATA')+'\Microsoft\Edge\User Data\Default\Cache')},@{Name='Chrome Cache';Path=([Environment]::GetEnvironmentVariable('LOCALAPPDATA')+'\Google\Chrome\User Data\Default\Cache')}); foreach($item in $items){$bytes=0;$files=0;if(Test-Path -LiteralPath $item.Path){Get-ChildItem -LiteralPath $item.Path -File -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {$bytes+=$_.Length;$files++}}; $mb=[math]::Round($bytes/1MB,2); ('{0}: {1} MB ({2} files) - {3}' -f $item.Name,$mb,$files,$item.Path) | Tee-Object -FilePath '%scanReport%' -Append}; Add-Content -LiteralPath '%scanReport%' -Value ''; Add-Content -LiteralPath '%scanReport%' -Value 'Largest files in Downloads (top 10):'; if(Test-Path -LiteralPath ([Environment]::GetFolderPath('UserProfile')+'\Downloads')){Get-ChildItem -LiteralPath ([Environment]::GetFolderPath('UserProfile')+'\Downloads') -File -Recurse -Force -ErrorAction SilentlyContinue | Sort-Object Length -Descending | Select-Object -First 10 | ForEach-Object {('{0} MB - {1}' -f [math]::Round($_.Length/1MB,2),$_.FullName) | Tee-Object -FilePath '%scanReport%' -Append}}" >nul 2>&1
+echo   [SCAN] Storage report saved to: %scanReport%
+echo. >> "%logFile%"
+echo   STORAGE SCAN REPORT >> "%logFile%"
+echo   See detailed report: %scanReport% >> "%logFile%"
+type "%scanReport%" >> "%logFile%"
 
 :: ===============================================================
 :: Admin Check
